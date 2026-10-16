@@ -1,7 +1,17 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import * as api from '@/api';
 import { useCurrentUser } from '@/state/auth';
+
+const liveCatalogue = {
+  staleTime: 0,
+  refetchOnMount: 'always' as const,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  refetchInterval: 10_000,
+};
 
 export const queryKeys = {
   countries: ['countries'] as const,
@@ -14,24 +24,42 @@ export const queryKeys = {
 };
 
 export function useCountries() {
-  return useQuery({ queryKey: queryKeys.countries, queryFn: api.getCountries, staleTime: 5 * 60_000 });
+  const query = useQuery({ queryKey: queryKeys.countries, queryFn: api.getCountries, ...liveCatalogue });
+  useFocusEffect(
+    useCallback(() => {
+      void query.refetch();
+    }, [query.refetch]),
+  );
+  return query;
 }
 
 export function useServices(countryId?: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.services(countryId),
     queryFn: () => api.getVisaServices(countryId),
-    staleTime: 5 * 60_000,
+    ...liveCatalogue,
   });
+  useFocusEffect(
+    useCallback(() => {
+      void query.refetch();
+    }, [query.refetch]),
+  );
+  return query;
 }
 
 export function useService(id: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.service(id),
     queryFn: () => api.getVisaService(id),
-    staleTime: 5 * 60_000,
+    ...liveCatalogue,
     enabled: id.length > 0,
   });
+  useFocusEffect(
+    useCallback(() => {
+      if (id) void query.refetch();
+    }, [id, query.refetch]),
+  );
+  return query;
 }
 
 export function useApplications() {
